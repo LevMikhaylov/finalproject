@@ -1,0 +1,509 @@
+openapi: 3.0.3
+info:
+  title: User Management API
+  description: API для управления пользователями и автомобилями
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+paths:
+  /:
+    get:
+      summary: Информация о API
+      description: Возвращает основную информацию о API и доступные endpoints
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User Management API"
+                  endpoints:
+                    type: array
+                    items:
+                      type: string
+                      example: "GET /users - Get all users"
+
+  /users:
+    post:
+      summary: Создать нового пользователя
+      description: Создает нового пользователя в системе
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: Пользователь успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Неверные данные пользователя
+        '409':
+          description: Пользователь с таким именем уже существует
+
+  /users/{id}:
+    get:
+      summary: Получить пользователя по ID
+      description: Возвращает информацию о пользователе по его идентификатору
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID пользователя
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Неверный ID пользователя
+        '404':
+          description: Пользователь не найден
+
+    delete:
+      summary: Удалить пользователя
+      description: Удаляет пользователя по его идентификатору
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID пользователя
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Пользователь успешно удален
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User deleted successfully"
+        '400':
+          description: Неверный ID пользователя
+        '404':
+          description: Пользователь не найден
+
+  /auth/login:
+    post:
+      summary: Аутентификация пользователя
+      description: Вход в систему с защитой от брутфорса. После 3 неудачных попыток аккаунт блокируется на 15 минут.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Неверный формат запроса
+        '401':
+          description: Неверные учетные данные
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid credentials"
+                  message:
+                    type: string
+                    example: "Invalid username or password"
+                  remainingAttempts:
+                    type: integer
+                    example: 2
+        '403':
+          description: Аккаунт временно заблокирован
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Account temporarily locked"
+                  message:
+                    type: string
+                    example: "Too many failed login attempts. Try again in 15 minutes."
+                  retryAfter:
+                    type: integer
+                    example: 15
+
+  /cars:
+    get:
+      summary: Получить список всех автомобилей
+      description: Возвращает список всех автомобилей (требуется аутентификация)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '401':
+          description: Пользователь не аутентифицирован
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+
+    post:
+      summary: Создать новый автомобиль
+      description: Добавляет новый автомобиль в систему (требуется аутентификация)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Car'
+      responses:
+        '201':
+          description: Автомобиль успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '400':
+          description: Неверные данные автомобиля
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '401':
+          description: Пользователь не аутентифицирован
+        '409':
+          description: Конфликт данных - автомобиль с таким госномером уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+
+  /cars/{id}:
+    get:
+      summary: Получить автомобиль по ID
+      description: Возвращает информацию об автомобиле по его идентификатору (требуется аутентификация)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID автомобиля
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '400':
+          description: Неверный ID автомобиля
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '401':
+          description: Пользователь не аутентифицирован
+        '404':
+          description: Автомобиль не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+
+    put:
+      summary: Обновить автомобиль
+      description: Обновляет информацию об автомобиле (требуется аутентификация)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID автомобиля
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Car'
+      responses:
+        '200':
+          description: Автомобиль успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '400':
+          description: Неверные данные автомобиля
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '401':
+          description: Пользователь не аутентифицирован
+        '404':
+          description: Автомобиль не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '409':
+          description: Конфликт данных - автомобиль с таким госномером уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+
+    delete:
+      summary: Удалить автомобиль
+      description: Удаляет автомобиль из системы (требуется аутентификация)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID автомобиля
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Автомобиль успешно удален
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '400':
+          description: Неверный ID автомобиля
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '401':
+          description: Пользователь не аутентифицирован
+        '404':
+          description: Автомобиль не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Уникальный идентификатор пользователя
+          example: 1
+        username:
+          type: string
+          description: Имя пользователя
+          example: "john_doe"
+        password:
+          type: string
+          description: Пароль пользователя
+          example: "securepassword"
+        email:
+          type: string
+          description: Email пользователя
+          example: "john@example.com"
+        firstName:
+          type: string
+          description: Имя
+          example: "John"
+        lastName:
+          type: string
+          description: Фамилия
+          example: "Doe"
+
+    AuthRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: Имя пользователя
+          example: "john_doe"
+        password:
+          type: string
+          description: Пароль пользователя
+          example: "securepassword123"
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT токен для аутентификации
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    Car:
+      type: object
+      required:
+        - brand
+        - model
+        - licensePlate
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Уникальный идентификатор автомобиля
+          example: 1
+        brand:
+          type: string
+          description: Марка автомобиля
+          example: "Toyota"
+        model:
+          type: string
+          description: Модель автомобиля
+          example: "Camry"
+        licensePlate:
+          type: string
+          description: Государственный номер
+          example: "A123BC"
+        year:
+          type: integer
+          description: Год выпуска
+          example: 2022
+        color:
+          type: string
+          description: Цвет автомобиля
+          example: "Black"
+        price:
+          type: number
+          format: float
+          description: Цена автомобиля
+          example: 25000.50
+
+    CarResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Статус выполнения операции
+          example: true
+        message:
+          type: string
+          description: Сообщение о результате операции
+          example: "Машина удалена успешно"
+        car:
+          $ref: '#/components/schemas/Car'
+        cars:
+          type: array
+          items:
+            $ref: '#/components/schemas/Car'
+
+  responses:
+    NotFoundError:
+      description: Запрашиваемый ресурс не найден
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "User with ID 123 not found"
+
+    ValidationError:
+      description: Ошибка валидации данных
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Username and password are required"
+
+    ConflictError:
+      description: Конфликт данных
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "User with this username already exists"
