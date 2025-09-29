@@ -14,5 +14,5 @@
 * Перейти в корневую папку cd ktor-sample(1)
 * Установить Docker Desktop
 * Выполнить команды docker build -t ktor-app и 
-docker run -p 80:8080 ktor-app
-Тогда приложение будет доступно по http://localhost
+docker run -p 8081:8080 ktor-app
+Тогда приложение будет доступно по http://localhostЖ8081
