@@ -43,8 +43,7 @@ fun Route.carRoutes() {
                         call.respond(CarResponse(success = true, car = car))
                     } else {
                         call.respond(
-                            HttpStatusCode.NotFound,
-                            CarResponse(success = false, message = "Машина не найдена")
+                            HttpStatusCode.NotFound
                         )
                     }
                 } catch (e: Exception) {
@@ -176,3 +175,4 @@ fun Route.carRoutes() {
     }
 
 }
+
